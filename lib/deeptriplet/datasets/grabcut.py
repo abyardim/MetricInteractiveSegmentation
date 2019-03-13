@@ -33,6 +33,13 @@ class GrabCut(data.Dataset):
     ):
         self.grabcut_root = grabcut_root
         self.normalize = normalize
+        
+        if self.normalize:
+            self.transforms = transforms.Compose([transforms.ToTensor(),
+                                                  transforms.Normalize(mean=[0.485, 0.456, 0.406],
+                                                                       std=[0.229, 0.224, 0.225])])
+        else:
+            self.transforms = transforms.Compose([transforms.ToTensor()])
 
         with open(os.path.join(grabcut_root, 'dataset.txt')) as file:
             lines = file.readlines()
@@ -42,16 +49,13 @@ class GrabCut(data.Dataset):
         return len(self.dataset)
 
     def __getitem__(self, i):
-        img = np.array(PIL.Image.open(self.grabcut_root + self.dataset[i][0]))
+        img = PIL.Image.open(self.grabcut_root + self.dataset[i][0])
         lbl = np.array(PIL.Image.open(self.grabcut_root + self.dataset[i][1]))
 
-        img = img.astype(np.float32) / 255
-        if self.normalize:
-            img = normalize_image_imagenet(img)
-        img = np.transpose(img, axes=[2, 0, 1])
+        img = self.transforms(img)
 
         lbl[lbl == 255] = 1
         lbl[lbl == 128] = 255
 
-        return torch.tensor(img), torch.tensor(lbl)
+        return img, torch.from_numpy(lbl)
 
