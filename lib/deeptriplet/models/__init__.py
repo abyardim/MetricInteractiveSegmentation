@@ -9,7 +9,7 @@ from .cifar_resnet import ResNetLambdaLayer
 from .deeplab_v2_resnet_sq import MS_Deeplab
 from .deeplab_v2_resnet_sq import Res_Deeplab
 
-from .fcn8_embedding import FCN8Embedding
+#from .fcn8_embedding import FCN8Embedding
 
 from .vgg_deeplab import DeepLab_VGG
 from .deeplab_vgg_spatial import DeepLab_VGG_Spatial
