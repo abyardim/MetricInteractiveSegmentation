@@ -5,12 +5,12 @@ import torch.nn.functional as F
 from .sync_batchnorm.batchnorm import SynchronizedBatchNorm2d
 from .aspp import build_aspp
 from .backbone import build_backbone
-from .decoder_spatial_last import build_decoder_spatial_last
+from .decoder_spatial_early import build_decoder_spatial_early
 
-class DeepLabSpatialLate(nn.Module):
+class DeepLabSpatialEarly(nn.Module):
     def __init__(self, backbone='resnet', output_stride=16, num_classes=21,
                  sync_bn=True, freeze_bn=False, dynamic_coordinates=False, spatial_size=(129, 129)):
-        super(DeepLabSpatialLate, self).__init__()
+        super(DeepLabSpatialEarly, self).__init__()
         if backbone == 'drn':
             output_stride = 8
 
@@ -21,7 +21,7 @@ class DeepLabSpatialLate(nn.Module):
 
         self.backbone = build_backbone(backbone, output_stride, BatchNorm)
         self.aspp = build_aspp(backbone, output_stride, BatchNorm)
-        self.decoder = build_decoder_spatial_last(num_classes, backbone, BatchNorm, dynamic=dynamic_coordinates, size=spatial_size)
+        self.decoder = build_decoder_spatial_early(num_classes, backbone, BatchNorm, dynamic=dynamic_coordinates, size=spatial_size)
 
         if freeze_bn:
             self.freeze_bn()
@@ -60,16 +60,18 @@ class DeepLabSpatialLate(nn.Module):
                     for p in m[1].parameters():
                         if p.requires_grad:
                             yield p
-
                             
     def init_from_semseg_model(self,d):
         del d['state_dict']['decoder.last_conv.8.weight']
         del d['state_dict']['decoder.last_conv.8.bias']
+        d['state_dict']['decoder.last_conv.0.weight'] = torch.cat((d['state_dict']['decoder.last_conv.0.weight'], 
+                                                                   torch.Tensor(256,2,3,3).normal_(std=2e-4).cuda()), 
+                                                                  dim=1)
         self.load_state_dict(d['state_dict'], strict=False)
-                            
+
 
 if __name__ == "__main__":
-    model = DeepLabSpatialLate(backbone='resnet', output_stride=16, dynamic_coordinates=True)
+    model = DeepLabSpatialEarly(num_classes=32, backbone='resnet', output_stride=16, dynamic_coordinates=True)
     model.eval().cuda()
     input = torch.rand(1, 3, 200, 513).cuda()
     output = model(input)
