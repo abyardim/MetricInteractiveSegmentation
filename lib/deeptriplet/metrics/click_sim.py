@@ -18,6 +18,8 @@ from scipy import ndimage
 
 import multiprocessing as mp
 
+import os
+
 def run_clicks(embeddings, labels, clicks, valid, flat_indices=True):
     dim1, dim2 = labels.squeeze().shape
 
@@ -130,18 +132,18 @@ def run_click_sim(embeddings, labels, n_clicks, computer_borders_manually, d_mar
     return results
 
 
-def run_image(i, n_clicks, compute_border):
-    embedding = np.load("/scratch-second/yardima/temp/{}.embed.aug.npy".format(i))
-    label = np.load("/scratch-second/yardima/temp/{}.label.aug.npy".format(i))
+def run_image(i, n_clicks, compute_border, pid):
+    embedding = np.load("/scratch-second/yardima/temp/{}_{}.embed.aug.npy".format(pid, i))
+    label = np.load("/scratch-second/yardima/temp/{}_{}.label.aug.npy".format(pid, i))
 
     return run_click_sim(embedding, label, n_clicks, compute_border, d_margin=5, d_clicks=10)
 
 
-def test_clicks(model, dataset, compute_border, n_clicks=10, n_images=100, tresh=0.85):
+def test_clicks(model, dataset, compute_border, n_clicks=10, n_images=100, tresh=0.85, shuffle=False):
     data_loader = data.DataLoader(dataset,
                                                 batch_size=1,
                                                 num_workers=4,
-                                                shuffle=True)
+                                                shuffle=shuffle)
     
     
     if n_images == None:
@@ -149,8 +151,12 @@ def test_clicks(model, dataset, compute_border, n_clicks=10, n_images=100, tresh
     
     img_count = 0
     data_iter = iter(data_loader)
-    while img_count < n_images:        
-        image, label = next(data_iter)
+    while img_count < n_images:     
+        try:
+            image, label = next(data_iter)
+        except StopIteration:
+            iter(data_loader)
+            image, label = next(data_iter)
 
         if image.dim() == 3:
             image = image.unsqueeze(0)
@@ -162,15 +168,15 @@ def test_clicks(model, dataset, compute_border, n_clicks=10, n_images=100, tresh
             embeddings = out.cpu().data.numpy()
             embeddings = np.transpose(embeddings.squeeze(), axes=[1, 2, 0])
 
-            np.save("/scratch-second/yardima/temp/{}.embed.aug".format(img_count), embeddings)
-            np.save("/scratch-second/yardima/temp/{}.label.aug.npy".format(img_count), label)
+            np.save("/scratch-second/yardima/temp/{}_{}.embed.aug".format(os.getpid(), img_count), embeddings)
+            np.save("/scratch-second/yardima/temp/{}_{}.label.aug.npy".format(os.getpid(), img_count), label)
         
         img_count += 1
     
     
     pool = mp.Pool(processes=16)
     
-    results = pool.starmap(run_image, zip(range(0,n_images), [n_clicks] * n_images, [compute_border] * n_images))
+    results = pool.starmap(run_image, zip(range(0,n_images), [n_clicks] * n_images, [compute_border] * n_images, [os.getpid()]*n_images))
     
     pool.close()
     pool.join()

@@ -9,7 +9,7 @@ from .decoder_spatial_early import build_decoder_spatial_early
 
 class DeepLabSpatialEarly(nn.Module):
     def __init__(self, backbone='resnet', output_stride=16, num_classes=21,
-                 sync_bn=True, freeze_bn=False, dynamic_coordinates=False, spatial_size=(129, 129)):
+                 sync_bn=True, freeze_bn=False, dynamic_coordinates=False, spatial_size=(129, 129), pretrained=True):
         super(DeepLabSpatialEarly, self).__init__()
         if backbone == 'drn':
             output_stride = 8
@@ -19,7 +19,7 @@ class DeepLabSpatialEarly(nn.Module):
         else:
             BatchNorm = nn.BatchNorm2d
 
-        self.backbone = build_backbone(backbone, output_stride, BatchNorm)
+        self.backbone = build_backbone(backbone, output_stride, BatchNorm, pretrained=pretrained)
         self.aspp = build_aspp(backbone, output_stride, BatchNorm)
         self.decoder = build_decoder_spatial_early(num_classes, backbone, BatchNorm, dynamic=dynamic_coordinates, size=spatial_size)
 

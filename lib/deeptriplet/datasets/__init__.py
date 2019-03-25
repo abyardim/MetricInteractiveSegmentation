@@ -5,3 +5,4 @@ from .pascal_random_triplet_obj_weighted_aug import PascalDatasetRandomTripletAu
 from .pascal_random_triplet_obj_weighted_aug2 import PascalDatasetRandomTripletAugmentedWeighted2
 from .subdataset import SubDataset
 from .grabcut import GrabCut
+from .multi_triplet import PascalMultiTriplet
