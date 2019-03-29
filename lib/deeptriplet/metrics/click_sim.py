@@ -128,7 +128,7 @@ def run_click_sim(embeddings, labels, n_clicks, computer_borders_manually, d_mar
 
         results.append(run_clicks(embedding, label_obj, clicks, valid, flat_indices=True))
         last_pred = results[-1]['pred']
-        
+       
     return results
 
 
@@ -138,8 +138,13 @@ def run_image(i, n_clicks, compute_border, pid):
 
     return run_click_sim(embedding, label, n_clicks, compute_border, d_margin=5, d_clicks=10)
 
+def run_image_precomputed(i, n_clicks, compute_border, folder, prefix):
+    embedding = np.load(os.path.join(folder, prefix + "{}.embed.aug.npy".format(i)))
+    label = np.load(os.path.join(folder, prefix + "{}.label.aug.npy".format(i)))
 
-def test_clicks(model, dataset, compute_border, n_clicks=10, n_images=100, tresh=0.85, shuffle=False):
+    return run_click_sim(embedding, label, n_clicks, compute_border, d_margin=5, d_clicks=10)
+
+def test_clicks(model, dataset, compute_border, n_clicks=10, n_images=100, tresh=0.85, shuffle=False, n_process=8):
     data_loader = data.DataLoader(dataset,
                                                 batch_size=1,
                                                 num_workers=4,
@@ -155,7 +160,7 @@ def test_clicks(model, dataset, compute_border, n_clicks=10, n_images=100, tresh
         try:
             image, label = next(data_iter)
         except StopIteration:
-            iter(data_loader)
+            data_iter = iter(data_loader)
             image, label = next(data_iter)
 
         if image.dim() == 3:
@@ -170,11 +175,14 @@ def test_clicks(model, dataset, compute_border, n_clicks=10, n_images=100, tresh
 
             np.save("/scratch-second/yardima/temp/{}_{}.embed.aug".format(os.getpid(), img_count), embeddings)
             np.save("/scratch-second/yardima/temp/{}_{}.label.aug.npy".format(os.getpid(), img_count), label)
+            
+            del image, out, embeddings, label
         
         img_count += 1
+        
+    del data_loader
     
-    
-    pool = mp.Pool(processes=16)
+    pool = mp.Pool(processes=n_process)
     
     results = pool.starmap(run_image, zip(range(0,n_images), [n_clicks] * n_images, [compute_border] * n_images, [os.getpid()]*n_images))
     
@@ -206,4 +214,3 @@ def test_clicks(model, dataset, compute_border, n_clicks=10, n_images=100, tresh
     clicks /= len(results)
     
     return mean_iou, mean_acc, clicks
-
